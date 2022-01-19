@@ -2,11 +2,11 @@ import json
 
 
 def get_message(obj):
-    message_size = obj.recv(1024)
-    if isinstance(message_size, bytes):
-        json_response = message_size.decode('utf-8')
+    encoded_response = obj.recv(1024)
+    if isinstance(encoded_response, bytes):
+        json_response = encoded_response.decode('utf-8')
         response = json.loads(json_response)
-        if type(response) == dict:
+        if isinstance(response, dict):
             return response
         raise ValueError
     raise ValueError

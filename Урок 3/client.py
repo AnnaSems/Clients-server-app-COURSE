@@ -24,7 +24,7 @@ def create_message_to_server(acc_name="C0deMaver1ck"):
 
 
 def check_server_ans(answer):
-    if answer['response'] in answer:
+    if 'response' in answer:
         if answer['response'] == 200:
             return '200 : OK'
         return f"400 : {answer['error']}"
@@ -38,15 +38,15 @@ def send_message():
         if server_port < 1024 or server_port > 65535:
             raise ValueError
     except IndexError:
-        server_default_address = 'localhost'
-        server_default_port = 7777
+        server_address = 'localhost'
+        server_port = 7777
     except ValueError:
         print(
             'В качестве порта может быть указано только число в диапазоне от 1024 до 65535.')
         sys.exit(1)
 
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server.connect((server_default_address, server_default_port))
+    server.connect((server_address, server_port))
     create_message = create_message_to_server()
     s_m(server, create_message)
     try:

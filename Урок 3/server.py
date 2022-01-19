@@ -11,8 +11,8 @@ from common.utils import get_message, send_message
 
 
 def check_client_message(message):
-    if message['action'] in message and message['action'] == 'authenticate' and message['time'] in message \
-            and message['user'] in message and message['user']['account_name'] == 'C0deMaver1ck':
+    if 'action' in message and message['action'] == 'authenticate' and 'time' in message \
+            and 'user' in message and message['user']['account_name'] == 'C0deMaver1ck':
         return {'response': 200}
     return {
         'code_error': 400,
@@ -55,9 +55,9 @@ def create_answer():
     while True:
         client, addr = server.accept()
         try:
-            message_from_cient = get_message(client)
-            print(message_from_cient)
-            response = check_client_message(message_from_cient)
+            message_from_client = get_message(client)
+            print(message_from_client)
+            response = check_client_message(message_from_client)
             send_message(client, response)
             client.close()
         except (ValueError, json.JSONDecodeError):
