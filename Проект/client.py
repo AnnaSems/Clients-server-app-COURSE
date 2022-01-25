@@ -6,6 +6,7 @@
 port — tcp-порт на сервере, по умолчанию 7777. """
 
 from common.utils import get_message, send_message as s_m
+from log.dec import log
 import sys
 import os
 import json
@@ -34,6 +35,7 @@ def check_server_ans(answer):
     raise ValueError
 
 
+@log
 def send_message():
     try:
         server_address = sys.argv[1]

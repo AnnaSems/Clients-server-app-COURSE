@@ -8,6 +8,7 @@ import socket
 import sys
 import json
 from common.utils import get_message, send_message
+from log.dec import log
 
 
 def check_client_message(message):
@@ -20,6 +21,7 @@ def check_client_message(message):
     }
 
 
+@log
 def create_answer():
     try:
         if '-p' in sys.argv:
