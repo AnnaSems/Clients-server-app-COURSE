@@ -5,11 +5,13 @@
 параметры командной строки скрипта client.py <addr> [<port>]: addr — ip-адрес сервера;
 port — tcp-порт на сервере, по умолчанию 7777. """
 
+from common.utils import get_message, send_message as s_m
 import sys
+import os
 import json
 import socket
 import time
-from common.utils import get_message, send_message as s_m
+sys.path.append(os.path.join(os.getcwd(), '.'))
 
 
 def create_message_to_server(acc_name="C0deMaver1ck"):
@@ -24,6 +26,7 @@ def create_message_to_server(acc_name="C0deMaver1ck"):
 
 
 def check_server_ans(answer):
+    print(answer)
     if 'response' in answer:
         if answer['response'] == 200:
             return '200 : OK'
