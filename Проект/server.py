@@ -5,6 +5,8 @@
 -a <addr> — IP-адрес для прослушивания (по умолчанию слушает все доступные адреса). """
 
 import select
+import logging
+import argparse
 import sys
 import socket
 import sys
@@ -54,6 +56,7 @@ def create_answer():
     listen_address, listen_port = arg_parser()
 
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     server.bind((listen_address, listen_port))
     server.settimeout(0.5)
     server.listen(4)

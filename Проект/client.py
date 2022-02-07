@@ -5,28 +5,45 @@
 параметры командной строки скрипта client.py <addr> [<port>]: addr — ip-адрес сервера;
 port — tcp-порт на сервере, по умолчанию 7777. """
 
-import argparse
-from common.utils import get_message, send_message as s_m
-from log.dec import log
 import sys
 import os
 import json
 import socket
 import time
+import argparse
+import threading
+from common.utils import get_message, send_message as s_m
+from log.dec import log
 sys.path.append(os.path.join(os.getcwd(), '.'))
 
 
-@log
-def message_from_server(message):
+def message_from_server(sock, my_username):
     """Функция - обработчик сообщений других пользователей, поступающих с сервера"""
-    if 'action' in message and message['action'] == 'message' and \
-            'sender' in message and 'mess_text' in message:
-        print(f'Получено сообщение от пользователя '
-              f'{message["sender"]}:\n{message["mess_text"]}')
-        print(f'Получено сообщение от пользователя '
-              f'{message["sender"]}:\n{message["mess_text"]}')
-    else:
-        print(f'Получено некорректное сообщение с сервера: {message}')
+    while True:
+        try:
+            message = get_message(sock)
+            if 'action' in message and message['action'] == 'message' and \
+                    'from' in message and 'mess_text' in message and message['to'] == my_username:
+                print(f'Получено сообщение от пользователя '
+                      f'{message["from"]}:\n{message["mess_text"]}')
+                print(f'Получено сообщение от пользователя '
+                      f'{message["from"]}:\n{message["mess_text"]}')
+            else:
+                print(f'Получено некорректное сообщение с сервера: {message}')
+        except (OSError, ConnectionError, ConnectionAbortedError,
+                ConnectionResetError, json.JSONDecodeError):
+            print(f'Потеряно соединение с сервером.')
+            break
+
+
+@log
+def create_exit_message(account_name):
+    """Функция создаёт словарь с сообщением о выходе"""
+    return {
+        'action': 'exit',
+        'time': time.time(),
+        'account_name': account_name
+    }
 
 
 @log
@@ -51,6 +68,27 @@ def create_message(sock, account_name='Guest'):
     return message_dict
 
 
+@log
+def user_interactive(sock, username):
+    """Функция взаимодействия с пользователем, запрашивает команды, отправляет сообщения"""
+    print_help()
+    while True:
+        command = input('Введите команду: ')
+        if command == 'message':
+            create_message(sock, username)
+        elif command == 'help':
+            print_help()
+        elif command == 'exit':
+            s_m(sock, create_exit_message(username))
+            print('Завершение соединения.')
+            # Задержка неоходима, чтобы успело уйти сообщение о выходе
+            time.sleep(0.5)
+            break
+        else:
+            print(
+                'Команда не распознана, попробойте снова. help - вывести поддерживаемые команды.')
+
+
 def create_message_to_server(acc_name="C0deMaver1ck"):
     message = {
         "action": "authenticate",
@@ -60,6 +98,14 @@ def create_message_to_server(acc_name="C0deMaver1ck"):
         }
     }
     return message
+
+
+def print_help():
+    """Функция выводящяя справку по использованию"""
+    print('Поддерживаемые команды:')
+    print('message - отправить сообщение. Кому и текст будет запрошены отдельно.')
+    print('help - вывести подсказки по командам')
+    print('exit - выход из программы')
 
 
 def check_server_ans(answer):
@@ -100,14 +146,16 @@ def arg_parser():
 
 def main():
     """Загружаем параметы коммандной строки"""
-    server_address, server_port, client_mode = arg_parser()
+    server_address, server_port, client_name = arg_parser()
 
     # Инициализация сокета и сообщение серверу о нашем появлении
+    if not client_name:
+        client_name = input('Введите имя пользователя: ')
+
     try:
         transport = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         transport.connect((server_address, server_port))
         s_m(transport, create_message_to_server())
-        answer = check_server_ans(get_message(transport))
         print(f'Установлено соединение с сервером.')
     except json.JSONDecodeError:
         sys.exit(1)
@@ -115,24 +163,22 @@ def main():
         # Если соединение с сервером установлено корректно,
         # начинаем обмен с ним, согласно требуемому режиму.
         # основной цикл прогрммы:
-        if client_mode == 'send':
-            print('Режим работы - отправка сообщений.')
-        else:
-            print('Режим работы - приём сообщений.')
-        while True:
-            # режим работы - отправка сообщений
-            if client_mode == 'send':
-                try:
-                    s_m(transport, create_message(transport))
-                except (ConnectionResetError, ConnectionError, ConnectionAbortedError):
-                    sys.exit(1)
+        receiver = threading.Thread(
+            target=message_from_server, args=(transport, client_name))
+        receiver.daemon = True
+        receiver.start()
 
-            # Режим работы приём:
-            if client_mode == 'listen':
-                try:
-                    message_from_server(get_message(transport))
-                except (ConnectionResetError, ConnectionError, ConnectionAbortedError):
-                    sys.exit(1)
+        # затем запускаем отправку сообщений и взаимодействие с пользователем.
+        user_interface = threading.Thread(
+            target=user_interactive, args=(transport, client_name))
+        user_interface.daemon = True
+        user_interface.start()
+
+        while True:
+            time.sleep(1)
+            if receiver.is_alive() and user_interface.is_alive():
+                continue
+            break
 
 
 if __name__ == '__main__':
